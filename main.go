@@ -52,7 +52,7 @@ func main() {
 	api.GET("/payment/:id", paymentHandler.GetByID)   // Add a route to get a payment by its ID
 	api.PUT("/payment/:id", paymentHandler.Update)    // Add a route to update a payment
 	api.DELETE("/payment/:id", paymentHandler.Delete) // Add a route to delete a payment
-	api.GET("/stream/payment", paymentHandler.Stream) // Add a route to delete a payment
+	api.GET("/payment/stream", paymentHandler.Stream) // Add a route to delete a payment
 
 	r.Run(":3000") // Start the server on the port specified in the PORT environment variable
 }
