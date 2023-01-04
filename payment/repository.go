@@ -40,6 +40,8 @@ func (r *repository) GetAll() ([]Payment, error) { // Get all payments from the 
 func (r *repository) GetByID(id int) (Payment, error) { // Get a payment by its ID
 	var payment Payment                                       // Create a payment
 	err := r.db.Where(&Payment{ID: id}).First(&payment).Error // Find the payment with the given ID and store it in the payment variable
+
+	r.db.Where(&product.Product{ID: payment.ProductID}).First(&payment.Product) // Find the product with the given ID and store it in the product variable
 	if err != nil {
 		return payment, err
 	}
@@ -75,14 +77,14 @@ func (r *repository) Update(id int, inputPayment InputPayment) (Payment, error) 
 		return payment, err // Return the payment and the error
 	}
 
-	if payment.ProductID == 0 {
-		return payment, errors.New("Produit non trouvé")
+	if payment.ProductID == product.ID {
+		return payment, nil
 	}
 
-	payment.ProductID = product.ID    // Update the payment with the new values
-	payment.PricePaid = product.Price // Update the payment with the new values
-	payment.Product = product         // Update the payment with the new values
-	r.db.Save(&payment)               // Save the updated payment in the database
+	payment.ProductID = product.ID             // Update the payment with the new values
+	payment.PricePaid = inputPayment.PricePaid // Update the payment with the new values
+	payment.Product = product                  // Update the payment with the new values
+	err = r.db.Save(&payment).Error            // Save the updated payment in the database
 
 	if err != nil {
 		return payment, err
@@ -93,7 +95,6 @@ func (r *repository) Update(id int, inputPayment InputPayment) (Payment, error) 
 func (r *repository) Delete(id int) error { // Delete a payment
 	payment := &Payment{ID: id} // Get the payment with the given ID
 	transac := r.db.Delete(payment)
-
 	if transac.Error != nil {
 		return transac.Error
 	}
