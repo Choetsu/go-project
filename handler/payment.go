@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -13,7 +12,9 @@ import (
 )
 
 type Message struct {
-	Text string
+	Text  string
+	Name  string
+	Price float64
 }
 
 type paymentHandler struct {
@@ -92,9 +93,12 @@ func (h *paymentHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-	fmt.Println("New payment created")
-	h.b.Submit(Message{Text: "Nouveau paiement créé"})
 
+	h.b.Submit(Message{
+		Text:  "Nouveau paiement",
+		Name:  newPayment.Product.Name,
+		Price: newPayment.PricePaid,
+	})
 	response := &Response{
 		Success: true,
 		Message: "OK",
@@ -137,6 +141,11 @@ func (h *paymentHandler) Update(c *gin.Context) {
 		return
 	}
 
+	h.b.Submit(Message{
+		Text:  "Paiement modifie",
+		Name:  uPayment.Product.Name,
+		Price: uPayment.PricePaid,
+	})
 	response := &Response{
 		Success: true,
 		Message: "OK",
@@ -173,14 +182,12 @@ func (h *paymentHandler) Delete(c *gin.Context) {
 	})
 }
 
-func (h paymentHandler) Stream(c *gin.Context) {
+func (h *paymentHandler) Stream(c *gin.Context) {
 	listener := make(chan interface{})
-
 	h.b.Register(listener)
 	defer h.b.Unregister(listener)
 
 	clientGone := c.Request.Context().Done()
-
 	c.Stream(func(w io.Writer) bool {
 		select {
 		case <-clientGone:
@@ -191,7 +198,7 @@ func (h paymentHandler) Stream(c *gin.Context) {
 				c.SSEvent("message", message)
 				return false
 			}
-			c.SSEvent("message", serviceMsg.Text)
+			c.SSEvent("message", serviceMsg.Text+", "+"\nProduit : "+serviceMsg.Name+", "+"\nPrix : "+strconv.FormatFloat(serviceMsg.Price, 'f', 2, 64))
 			return true
 		}
 	})

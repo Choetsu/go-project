@@ -40,19 +40,19 @@ func main() {
 	r := gin.Default() // Create a new Gin router
 
 	// //Add a route to get the health of the server
-	api := r.Group("/api")                             // Create a group of routes for the API
-	api.GET("/products", productHandler.GetAll)        // Add a route to get all products
-	api.GET("/products/:id", productHandler.GetByID)   // Add a route to get a product by its ID
-	api.POST("/products", productHandler.Create)       // Add a route to create a new product
-	api.PUT("/products/:id", productHandler.Update)    // Add a route to update a product
-	api.DELETE("/products/:id", productHandler.Delete) // Add a route to delete a product
+	api := r.Group("/api")                            // Create a group of routes for the API
+	api.GET("/products", productHandler.GetAll)       // Add a route to get all products
+	api.GET("/product/:id", productHandler.GetByID)   // Add a route to get a product by its ID
+	api.POST("/product", productHandler.Create)       // Add a route to create a new product
+	api.PUT("/product/:id", productHandler.Update)    // Add a route to update a product
+	api.DELETE("/product/:id", productHandler.Delete) // Add a route to delete a product
 
-	api.POST("/payments", paymentHandler.Create)       // Add a route to create a new payment
-	api.GET("/payments", paymentHandler.GetAll)        // Add a route to get all payments
-	api.GET("/payments/:id", paymentHandler.GetByID)   // Add a route to get a payment by its ID
-	api.PUT("/payments/:id", paymentHandler.Update)    // Add a route to update a payment
-	api.DELETE("/payments/:id", paymentHandler.Delete) // Add a route to delete a payment
-	api.GET("/payments/stream", paymentHandler.Stream) // Add a route to delete a payment
+	api.POST("/payment", paymentHandler.Create)       // Add a route to create a new payment
+	api.GET("/payments", paymentHandler.GetAll)       // Add a route to get all payments
+	api.GET("/payment/:id", paymentHandler.GetByID)   // Add a route to get a payment by its ID
+	api.PUT("/payment/:id", paymentHandler.Update)    // Add a route to update a payment
+	api.DELETE("/payment/:id", paymentHandler.Delete) // Add a route to delete a payment
+	api.GET("/stream/payment", paymentHandler.Stream) // Add a route to delete a payment
 
 	r.Run(":3000") // Start the server on the port specified in the PORT environment variable
 }

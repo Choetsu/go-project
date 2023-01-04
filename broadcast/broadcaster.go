@@ -1,22 +1,34 @@
+/*
+Package broadcast provides pubsub of messages over channels.
+A provider has a Broadcaster into which it Submits messages and into
+which subscribers Register to pick up those messages.
+*/
 package broadcast
 
 type broadcaster struct {
-	input chan interface{}        // Input channel for the broadcaster to receive messages
-	reg   chan chan<- interface{} // Channel for registering new output channels
-	unreg chan chan<- interface{} // Channel for unregistering output channels
+	input chan interface{}
+	reg   chan chan<- interface{}
+	unreg chan chan<- interface{}
 
-	outputs map[chan<- interface{}]bool // Map of output channels to broadcast messages to (true = active, false = inactive)
+	outputs map[chan<- interface{}]bool
 }
 
+// The Broadcaster interface describes the main entry points to
+// broadcasters.
 type Broadcaster interface {
-	Register(chan<- interface{})   // Register a new output channel (messages will be sent to it)
-	Unregister(chan<- interface{}) // Unregister an output channel (no more messages will be sent to it)
-	Close() error                  // Close the broadcaster (no more messages will be sent to any output channel)
-	Submit(interface{})            // Submit a message to be broadcasted to all output channels
-	TrySubmit(interface{}) bool    // Try to submit a message to be broadcasted to all output channels
+	// Register a new channel to receive broadcasts
+	Register(chan<- interface{})
+	// Unregister a channel so that it no longer receives broadcasts.
+	Unregister(chan<- interface{})
+	// Shut this broadcaster down.
+	Close() error
+	// Submit a new object to all subscribers
+	Submit(interface{})
+	// Try Submit a new object to all subscribers return false if input chan is fill
+	TrySubmit(interface{}) bool
 }
 
-func (b *broadcaster) broadcast(m interface{}) { //
+func (b *broadcaster) broadcast(m interface{}) {
 	for ch := range b.outputs {
 		ch <- m
 	}
@@ -25,59 +37,64 @@ func (b *broadcaster) broadcast(m interface{}) { //
 func (b *broadcaster) run() {
 	for {
 		select {
-		case m := <-b.input: // Receive a message from the input channel
-			b.broadcast(m) // Broadcast the message to all output channels
-		case ch, ok := <-b.reg: // Receive a new output channel from the reg channel
-			if !ok {
-				return
+		case m := <-b.input:
+			b.broadcast(m)
+		case ch, ok := <-b.reg:
+			if ok {
+				b.outputs[ch] = true
 			} else {
-				b.outputs[ch] = true // Add the output channel to the map of output channels
+				return
 			}
-		case ch := <-b.unreg: // Receive an output channel from the unreg channel
-			delete(b.outputs, ch) // Remove the output channel from the map of output channels
+		case ch := <-b.unreg:
+			delete(b.outputs, ch)
 		}
 	}
 }
 
+// NewBroadcaster creates a new broadcaster with the given input
+// channel buffer length.
 func NewBroadcaster(buflen int) Broadcaster {
-	b := &broadcaster{ // Create a new broadcaster
+	b := &broadcaster{
 		input:   make(chan interface{}, buflen),
 		reg:     make(chan chan<- interface{}),
 		unreg:   make(chan chan<- interface{}),
 		outputs: make(map[chan<- interface{}]bool),
 	}
-	go b.run() // Start the broadcaster
+
+	go b.run()
+
 	return b
 }
 
-func (b *broadcaster) Register(newch chan<- interface{}) { // Register a new output channel
-	b.reg <- newch // Register the new output channel
+func (b *broadcaster) Register(newch chan<- interface{}) {
+	b.reg <- newch
 }
 
-func (b *broadcaster) Unregister(newch chan<- interface{}) { // Unregister an output channel
-	b.unreg <- newch // Unregister the output channel
+func (b *broadcaster) Unregister(newch chan<- interface{}) {
+	b.unreg <- newch
 }
 
-func (b *broadcaster) Close() error { // Close the broadcaster
-	close(b.reg)   // Close the reg channel
-	close(b.unreg) // Close the unreg channel
-	// close(b.input) // Close the input channel
+func (b *broadcaster) Close() error {
+	close(b.reg)
+	close(b.unreg)
 	return nil
 }
 
-func (b *broadcaster) Submit(m interface{}) { // Submit a message to be broadcasted to all output channels
-	if b.input == nil {
-		b.input <- m // Send the message to the input channel
+// Submit an item to be broadcast to all listeners.
+func (b *broadcaster) Submit(m interface{}) {
+	if b != nil {
+		b.input <- m
 	}
 }
 
-func (b *broadcaster) TrySubmit(m interface{}) bool { // Try to submit a message to be broadcasted to all output channels
+// TrySubmit attempts to submit an item to be broadcast, returning
+// true iff it the item was broadcast, else false.
+func (b *broadcaster) TrySubmit(m interface{}) bool {
 	if b == nil {
 		return false
 	}
-
 	select {
-	case b.input <- m: // Send the message to the input channel
+	case b.input <- m:
 		return true
 	default:
 		return false

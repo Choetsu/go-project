@@ -55,7 +55,7 @@ func (r *repository) Create(product Product) (Product, error) { // Create a new 
 	return product, nil
 }
 
-func (r *repository) Update(id int, InputProduct InputProduct) (Product, error) { // Update a product
+func (r *repository) Update(id int, inputProduct InputProduct) (Product, error) { // Update a product
 	var prod Product
 	r.db.Where("id = ?", id).First(&prod)
 	if prod.ID == 0 {
@@ -68,13 +68,19 @@ func (r *repository) Update(id int, InputProduct InputProduct) (Product, error) 
 		return product, err // Return the product and the error
 	}
 
-	product.Name = InputProduct.Name
-	product.Price = InputProduct.Price // Update the product with the new values
+	product.Name = inputProduct.Name
+	product.Price = inputProduct.Price // Update the product with the new values
 
-	err = r.db.Save(&product).Error // Save the updated product in the database
-	if err != nil {
-		return product, err
+	unique := r.db.Where("name = ? AND price = ?", product.Name, product.Price).First(&prod).Error
+	if unique != nil {
+		err = r.db.Save(&product).Error // Save the updated product in the database
+		if err != nil {
+			return product, err
+		}
+	} else {
+		return product, errors.New("Ce produit existe déjà !")
 	}
+
 	return product, nil
 }
 
