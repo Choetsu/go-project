@@ -1,21 +1,28 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
+	"go-project/broadcast"
 	"go-project/payment"
 
 	"github.com/gin-gonic/gin"
 )
 
-type paymentHandler struct {
-	paymentService payment.Service
+type Message struct {
+	Text string
 }
 
-func NewPaymenthandler(paymentService payment.Service) *paymentHandler {
-	return &paymentHandler{paymentService}
+type paymentHandler struct {
+	paymentService payment.Service
+	b              broadcast.Broadcaster
+}
+
+func NewPaymenthandler(paymentService payment.Service, b broadcast.Broadcaster) *paymentHandler {
+	return &paymentHandler{paymentService, b}
 }
 
 func (h *paymentHandler) GetAll(c *gin.Context) {
@@ -75,6 +82,7 @@ func (h *paymentHandler) Create(c *gin.Context) {
 	}
 
 	newPayment, err := h.paymentService.Create(input)
+
 	if err != nil {
 		response := &Response{
 			Success: false,
@@ -84,6 +92,8 @@ func (h *paymentHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
+	fmt.Println("New payment created")
+	h.b.Submit(Message{Text: "Nouveau paiement créé"})
 
 	response := &Response{
 		Success: true,
@@ -163,20 +173,26 @@ func (h *paymentHandler) Delete(c *gin.Context) {
 	})
 }
 
-func (h *paymentHandler) StreamAll(c *gin.Context) {
-	streams, err := h.paymentService.StreamAll()
+func (h paymentHandler) Stream(c *gin.Context) {
+	listener := make(chan interface{})
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, &Response{
-			Success: false,
-			Message: "Something went wrong",
-			Data:    nil,
-		})
-		return
-	}
+	h.b.Register(listener)
+	defer h.b.Unregister(listener)
+
+	clientGone := c.Request.Context().Done()
 
 	c.Stream(func(w io.Writer) bool {
-		c.SSEvent("message", streams)
-		return true
+		select {
+		case <-clientGone:
+			return false
+		case message := <-listener:
+			serviceMsg, ok := message.(Message)
+			if !ok {
+				c.SSEvent("message", message)
+				return false
+			}
+			c.SSEvent("message", serviceMsg.Text)
+			return true
+		}
 	})
 }

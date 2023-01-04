@@ -6,7 +6,6 @@ type Service interface {
 	Create(payment InputPayment) (Payment, error)
 	Update(id int, inputPayment InputPayment) (Payment, error)
 	Delete(id int) error
-	StreamAll() (<-chan Payment, <-chan error)
 }
 
 type service struct {
@@ -58,9 +57,4 @@ func (s *service) Delete(id int) error { // Delete a payment
 		return err
 	}
 	return nil
-}
-
-func (s *service) StreamAll() (<-chan Payment, <-chan error) { // Stream all payments from the database
-	payments, errs := s.repository.StreamAll()
-	return payments, errs
 }

@@ -12,7 +12,6 @@ type Repository interface {
 	Create(payment Payment) (Payment, error)
 	Update(id int, inputPayment InputPayment) (Payment, error)
 	Delete(id int) error
-	StreamAll() (<-chan Payment, <-chan error)
 }
 
 type repository struct {
@@ -76,31 +75,4 @@ func (r *repository) Delete(id int) error { // Delete a payment
 		return errors.New("payment non trouvé")
 	}
 	return nil
-}
-
-func (r *repository) StreamAll() (<-chan Payment, <-chan error) {
-	payments := make(chan Payment)
-	errc := make(chan error, 1)
-
-	go func() {
-		defer close(payments)
-		rows, err := r.db.Model(&Payment{}).Rows()
-		if err != nil {
-			errc <- err
-			return
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var payment Payment
-			err := r.db.ScanRows(rows, &payment)
-			if err != nil {
-				errc <- err
-				return
-			}
-			payments <- payment
-		}
-	}()
-
-	return payments, errc
 }
