@@ -77,10 +77,6 @@ func (r *repository) Update(id int, inputPayment InputPayment) (Payment, error) 
 		return payment, err // Return the payment and the error
 	}
 
-	if payment.ProductID == product.ID {
-		return payment, nil
-	}
-
 	payment.ProductID = product.ID             // Update the payment with the new values
 	payment.PricePaid = inputPayment.PricePaid // Update the payment with the new values
 	payment.Product = product                  // Update the payment with the new values
